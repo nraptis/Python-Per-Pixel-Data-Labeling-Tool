@@ -1,83 +1,71 @@
 # graphics_texture.py
 
 from __future__ import annotations
-
-from typing import TYPE_CHECKING, Optional, Any
+from typing import TYPE_CHECKING, Optional
 
 if TYPE_CHECKING:
-    # Only imported for type hints; avoids circular import at runtime
     from graphics_library import GraphicsLibrary
 
+from PIL import Image
+import numpy as np
+from OpenGL import GL as gl
+
+
 class GraphicsTexture:
-    def __init__(self) -> None:
-        self.graphics: Optional["GraphicsLibrary"] = None
-        self.texture_index: int = -1
-
-        self.width: int = 0
-        self.widthf: float = 0.0
-
-        self.height: int = 0
-        self.heightf: float = 0.0
-
-        self.file_name: Optional[str] = None
-
-    def load_from_file(self, graphics: Optional["GraphicsLibrary"], bitmap: Any, file_name: str) -> None:
-        self.load_from_bitmap(graphics, bitmap, file_name)
-
-    def load_from_bitmap(
+    def __init__(
         self,
-        graphics: Optional["GraphicsLibrary"],
-        bitmap: Optional[Any],
+        graphics: Optional["GraphicsLibrary"] = None,
         file_name: Optional[str] = None,
     ) -> None:
-        self.graphics = graphics
-        self.file_name = file_name
+        self.graphics: Optional["GraphicsLibrary"] = graphics
+        self.file_name: Optional[str] = file_name
+
+        self.texture_index: int = -1
+        self.width: int = 0
+        self.height: int = 0
+        self.widthf: float = 0.0
+        self.heightf: float = 0.0
+
+        # Auto-load if both graphics + path are provided
+        if graphics is not None and file_name is not None:
+            self.load()
+
+    # --------------------------------------------------------------
+    # Load/reload texture from file
+    # --------------------------------------------------------------
+    def load(self) -> None:
+        """
+        Load or reload the texture from file_name.
+        """
+        if self.graphics is None or self.file_name is None:
+            return
+
+        # If previously loaded, delete old GL texture
+        self.unload()
+
+        # Open with PIL
+        img = Image.open(self.file_name).convert("RGBA")
+        self.width, self.height = img.size
+        self.widthf = float(self.width)
+        self.heightf = float(self.height)
+
+        bitmap = np.array(img, dtype=np.uint8)
+
+        # Use GraphicsLibrary to create GL texture
+        self.texture_index = self.graphics.texture_generate_from_bitmap(bitmap)
+
+    # --------------------------------------------------------------
+    # Unload / delete GPU texture
+    # --------------------------------------------------------------
+    def unload(self) -> None:
+        """
+        Delete the texture from GPU and reset fields.
+        """
+        if self.texture_index != -1:
+            gl.glDeleteTextures([self.texture_index])
+            self.texture_index = -1
 
         self.width = 0
         self.height = 0
         self.widthf = 0.0
         self.heightf = 0.0
-        self.texture_index = -1
-
-        if graphics is not None and bitmap is not None:
-            self.width = getattr(bitmap, "width", 0)
-            self.height = getattr(bitmap, "height", 0)
-            self.widthf = float(self.width)
-            self.heightf = float(self.height)
-            self.texture_index = graphics.texture_generate(bitmap)
-
-    def load_empty(
-        self,
-        graphics: Optional["GraphicsLibrary"],
-        width: int,
-        height: int,
-        file_name: Optional[str] = None,
-    ) -> None:
-        self.graphics = graphics
-        self.file_name = file_name
-
-        self.width = int(width)
-        self.height = int(height)
-        self.widthf = float(self.width)
-        self.heightf = float(self.height)
-        self.texture_index = -1
-
-        if graphics is not None:
-            self.texture_index = graphics.texture_generate(width, height)
-
-    def load_existing(
-        self,
-        graphics: Optional["GraphicsLibrary"],
-        texture_index: int,
-        width: int,
-        height: int,
-        file_name: Optional[str] = None,
-    ) -> None:
-        self.graphics = graphics
-        self.file_name = file_name
-
-        self.width = int(width)
-        self.height = int(height)
-        self.widthf = float(self.width)
-        self.heightf = float(self.height)
-        self.texture_index = int(texture_index)

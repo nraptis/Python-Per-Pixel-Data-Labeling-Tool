@@ -8,17 +8,11 @@ import numpy as np
 from OpenGL import GL as gl
 from PIL import Image
 
-from shader_program_shape_2d import ShaderProgramShape2D
-from graphics_array_buffer import GraphicsArrayBuffer
-from primitives import Shape2DVertex
-from matrix import Matrix
-from uniforms_shape import UniformsShapeVertex, UniformsShapeFragment
-from graphics_library import GraphicsLibrary
 from graphics_pipeline import GraphicsPipeline
-from color import Color
+
 
 # ----------------------------------------------------------------------
-# Main: Hello Triangle using your stack
+# Main: Textured triangle using vanilla OpenGL + your sprite_2d shaders
 # ----------------------------------------------------------------------
 def main():
     # --------------------------------------------------------------
@@ -27,8 +21,7 @@ def main():
     if not glfw.init():
         print("Failed to initialize GLFW")
         sys.exit(1)
-        
-    # OpenGL 2.1-ish is fine for this; we just need a basic context.
+
     glfw.window_hint(glfw.CONTEXT_VERSION_MAJOR, 2)
     glfw.window_hint(glfw.CONTEXT_VERSION_MINOR, 1)
 
@@ -41,144 +34,156 @@ def main():
 
     glfw.make_context_current(window)
 
-
     base_dir = Path(__file__).resolve().parent
     shader_path = base_dir / "shaders"
+    image_path = base_dir / "images/image.png"
+
+    # --------------------------------------------------------------
+    # Load shaders via your pipeline (we'll use sprite_2d only)
+    # --------------------------------------------------------------
     pipeline = GraphicsPipeline(shader_path)
+    sprite_prog = pipeline.program_sprite2d
 
+    print("sprite_2d attrib/uni locations:")
+    print("  position =", sprite_prog.attribute_location_position)
+    print("  texcoord =", sprite_prog.attribute_location_texture_coordinates)
+    print("  Texture  =", sprite_prog.uniform_location_texture)
+    print("  ModColor =", sprite_prog.uniform_location_modulate_color)
 
-    # --- Create a VBO for the triangle positions ---
-    positions = np.array([
-        -0.5, -0.5,
-         0.5, -0.5,
-         0.5,  0.5,
+    # --------------------------------------------------------------
+    # Vanilla texture loading with PIL + PyOpenGL
+    # --------------------------------------------------------------
+    image = Image.open(image_path).convert("RGBA")
+    tex_width, tex_height = image.size
+    print(f"Loaded image: {tex_width} x {tex_height}")
+
+    image_data = np.array(image, dtype=np.uint8)
+    print("Image data shape:", image_data.shape, "dtype:", image_data.dtype)
+
+    tex = gl.glGenTextures(1)
+    if isinstance(tex, (list, tuple, np.ndarray)):
+        tex = int(tex[0])
+    else:
+        tex = int(tex)
+
+    gl.glBindTexture(gl.GL_TEXTURE_2D, tex)
+    gl.glTexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_MIN_FILTER, gl.GL_LINEAR)
+    gl.glTexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_MAG_FILTER, gl.GL_LINEAR)
+    gl.glTexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_WRAP_S, gl.GL_CLAMP_TO_EDGE)
+    gl.glTexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_WRAP_T, gl.GL_CLAMP_TO_EDGE)
+
+    gl.glTexImage2D(
+        gl.GL_TEXTURE_2D,
+        0,
+        gl.GL_RGBA,
+        tex_width,
+        tex_height,
+        0,
+        gl.GL_RGBA,
+        gl.GL_UNSIGNED_BYTE,
+        image_data,
+    )
+
+    print("Created GL texture id:", tex)
+
+    # --------------------------------------------------------------
+    # Create a VBO with interleaved position (x,y) + uv (u,v)
+    # --------------------------------------------------------------
+    # Positions in clip-space, UVs in [0,1]
+    # v is flipped so that v=0 is top of image (common for PNGs)
+    vertices = np.array([
+        #   x,     y,    u,   v
+        -0.8, -0.8,   0.0, 1.0,   # bottom-left
+         0.8, -0.8,   1.0, 1.0,   # bottom-right
+         0.0,  0.8,   0.5, 0.0,   # top-center
     ], dtype=np.float32)
 
     vbo = gl.glGenBuffers(1)
+    if isinstance(vbo, (list, tuple, np.ndarray)):
+        vbo = int(vbo[0])
+    else:
+        vbo = int(vbo)
+
     gl.glBindBuffer(gl.GL_ARRAY_BUFFER, vbo)
-    gl.glBufferData(gl.GL_ARRAY_BUFFER, positions.nbytes, positions, gl.GL_STATIC_DRAW)
+    gl.glBufferData(gl.GL_ARRAY_BUFFER, vertices.nbytes, vertices, gl.GL_STATIC_DRAW)
+
     gl.glDisable(gl.GL_DEPTH_TEST)
     gl.glDisable(gl.GL_CULL_FACE)
 
-    # --------------------------------------------------------------
-    # Create your GraphicsLibrary (activity/renderer/pipeline/surface_view unused)
-    # --------------------------------------------------------------
-    graphics = GraphicsLibrary(
-        activity=None,
-        renderer=None,
-        pipeline=None,
-        surface_view=None,
-        width=width,
-        height=height,
-    )
-
-    # --------------------------------------------------------------
-    # Build a simple triangle using Shape2DVertex + GraphicsArrayBuffer
-    # --------------------------------------------------------------
-    """
-    vertices = [
-        Shape2DVertex(x=100.0, y=100.0),
-        Shape2DVertex(x=250.0,  y=120.0),
-        Shape2DVertex(x=160.0,  y=300.0),
-    ]
-    """
-
-    vertices = [
-        Shape2DVertex(x=-0.75, y=-0.75),
-        Shape2DVertex(x=0.5,  y=-0.5),
-        Shape2DVertex(x=0.5,  y=0.5),
-    ]
-
-    vertex_buffer = GraphicsArrayBuffer[Shape2DVertex]()
-    vertex_buffer.load(graphics, vertices)
-
-    # Index buffer [0, 1, 2] for drawElements (uint32)
-    indices = graphics.buffer_index_generate_from_list([0, 1, 2])
-
-    # --------------------------------------------------------------
-    # Set up uniforms via UniformsShapeVertex / UniformsShapeFragment
-    # --------------------------------------------------------------
-    # Simple identity matrices = clip-space already
-    uniforms_vertex = UniformsShapeVertex(
-        projection_matrix=Matrix(),  # identity by default
-        model_view_matrix=Matrix(),  # identity by default
-    )
-
-    # Solid color (reddish)
-    uniforms_fragment = UniformsShapeFragment(
-        r=1.0,
-        g=0.3,
-        b=0.2,
-        a=1.0,
-    )
-    
     print("GL VERSION:", gl.glGetString(gl.GL_VERSION))
     print("GLSL VERSION:", gl.glGetString(gl.GL_SHADING_LANGUAGE_VERSION))
     print("VENDOR:", gl.glGetString(gl.GL_VENDOR))
 
-    err = gl.glGetError()
-    if err != 0:
-        print("*** GL ERROR:", hex(err))
-
+    # --------------------------------------------------------------
+    # Main loop
+    # --------------------------------------------------------------
     while not glfw.window_should_close(window):
 
-        # RED background so we know frame is drawing
         gl.glClearColor(1.0, 0.0, 0.0, 1.0)
         gl.glClear(gl.GL_COLOR_BUFFER_BIT)
 
-        graphics.link_buffer_to_shader_program(
-            pipeline.program_shape2d,
-            vertex_buffer.buffer_index,
-        )
+        # Use sprite_2d program
+        gl.glUseProgram(sprite_prog.program)
 
-        # Solid color (reddish) using Color object
-        triangle_color = Color(1.0, 0.3, 0.2, 1.0)
+        # Bind VBO
+        gl.glBindBuffer(gl.GL_ARRAY_BUFFER, vbo)
 
-        # Solid white color
-        loc_color = pipeline.program_shape2d.uniform_location_modulate_color
+        stride = 4 * 4  # 4 floats per vertex (x,y,u,v) * 4 bytes
+
+        # Position attribute
+        loc_pos = sprite_prog.attribute_location_position
+        if loc_pos != -1:
+            gl.glEnableVertexAttribArray(loc_pos)
+            gl.glVertexAttribPointer(
+                loc_pos,
+                2,                      # vec2
+                gl.GL_FLOAT,
+                False,
+                stride,
+                ctypes.c_void_p(0),     # offset 0
+            )
+
+        # Texcoord attribute
+        loc_uv = sprite_prog.attribute_location_texture_coordinates
+        if loc_uv != -1:
+            gl.glEnableVertexAttribArray(loc_uv)
+            gl.glVertexAttribPointer(
+                loc_uv,
+                2,                      # vec2
+                gl.GL_FLOAT,
+                False,
+                stride,
+                ctypes.c_void_p(8),     # 2 floats * 4 bytes
+            )
+
+        # Bind texture to unit 0 and set sampler uniform
+        gl.glActiveTexture(gl.GL_TEXTURE0)
+        gl.glBindTexture(gl.GL_TEXTURE_2D, tex)
+
+        loc_tex = sprite_prog.uniform_location_texture
+        if loc_tex != -1:
+            gl.glUniform1i(loc_tex, 0)
+
+        # ModulateColor = white (no tint)
+        loc_color = sprite_prog.uniform_location_modulate_color
         if loc_color != -1:
-            gl.glUniform4f(loc_color, 1.0, 0.0, 1.0, 1.0)
+            gl.glUniform4f(loc_color, 1.0, 1.0, 1.0, 1.0)
 
-        # Draw 3 vertices from the VBO
+        # Draw triangle
         gl.glDrawArrays(gl.GL_TRIANGLES, 0, 3)
-        
 
-        #gl.glDisableVertexAttribArray(loc_pos)
-        graphics.unlink_buffer_from_shader_program(pipeline.program_shape2d)
-
-        """
-        projection = Matrix()
-        projection.ortho(0.0, width, height, 0.0, 0.0, 1024.0)
-
-        model_view = Matrix()
-        model_view.translate(0.5, 0.5, 0.0)
-
-
-        
-
-        # Apply vertex + fragment uniforms via your Uniforms classes
-        uniforms_vertex.link(graphics, pipeline.program_shape2d)
-        uniforms_fragment.link(graphics, pipeline.program_shape2d)
-
-        #graphics.uniforms_projection_matrix_set(pipeline.program_shape2d, projection)
-        #graphics.uniforms_model_view_matrix_set(pipeline.program_shape2d, model_view)
-        #graphics.uniforms_modulate_color_set(pipeline.program_shape2d, 1, 1, 1, 1)
-
-
-        # Link buffer to shader program (sets up Positions attribute)
-        graphics.link_buffer_to_shader_program(pipeline.program_shape2d, vertex_buffer.buffer_index)
-        
-
-        # Draw the triangle using your GraphicsLibrary helper
-        graphics.draw_triangles(indices, 3)
-
-        # Clean up attribute state
-        graphics.unlink_buffer_from_shader_program(pipeline.program_shape2d)
-        """
+        # Disable attribs
+        if loc_uv != -1:
+            gl.glDisableVertexAttribArray(loc_uv)
+        if loc_pos != -1:
+            gl.glDisableVertexAttribArray(loc_pos)
 
         glfw.swap_buffers(window)
         glfw.poll_events()
 
+    # Cleanup
+    gl.glDeleteTextures([tex])
+    gl.glDeleteBuffers(1, [vbo])
     glfw.terminate()
 
 
