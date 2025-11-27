@@ -1,6 +1,7 @@
 # ShaderProgramShape2D.py
 
 from shader_program import ShaderProgram
+import ctypes
 
 class ShaderProgramShape2D(ShaderProgram):
     def __init__(self, name: str, vertex_shader: int, fragment_shader: int):
@@ -19,6 +20,8 @@ class ShaderProgramShape2D(ShaderProgram):
         print(f"===> {name} ... uniform_location_projection_matrix = {self.uniform_location_projection_matrix}")
         print(f"===> {name} ... uniform_location_model_view_matrix = {self.uniform_location_model_view_matrix}")
 
-        self.attribute_stride_position = 4 * 2
+        float_size = 4  # bytes per float
+
+        self.attribute_stride_position = float_size * 2
         self.attribute_size_position = 2
-        self.attribute_offset_position = 0
+        self.attribute_offset_position = ctypes.c_void_p(0)

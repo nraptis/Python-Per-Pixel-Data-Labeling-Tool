@@ -16,7 +16,7 @@ class GraphicsArrayBuffer(Generic[T]):
     Statically allocated graphics buffer.
     The content can be replaced, but it cannot change size.
     """
-
+    
     def __init__(self) -> None:
         self.graphics: Optional["GraphicsLibrary"] = None
         self.vertex_buffer: list[float] = []

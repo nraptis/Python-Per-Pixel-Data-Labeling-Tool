@@ -2,9 +2,8 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional, Any
 
-from typing import Optional, Any
 if TYPE_CHECKING:
     # Only imported for type hints; avoids circular import at runtime
     from graphics_library import GraphicsLibrary
@@ -41,8 +40,6 @@ class GraphicsTexture:
         self.texture_index = -1
 
         if graphics is not None and bitmap is not None:
-            # You will implement this in GraphicsLibrary:
-            #   def texture_generate(self, bitmap) -> int: ...
             self.width = getattr(bitmap, "width", 0)
             self.height = getattr(bitmap, "height", 0)
             self.widthf = float(self.width)
@@ -66,8 +63,6 @@ class GraphicsTexture:
         self.texture_index = -1
 
         if graphics is not None:
-            # You will implement this in GraphicsLibrary:
-            #   def texture_generate(self, width: int, height: int) -> int: ...
             self.texture_index = graphics.texture_generate(width, height)
 
     def load_existing(

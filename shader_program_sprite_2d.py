@@ -1,6 +1,7 @@
 # shader_program_sprite2d.py
 
 from shader_program import ShaderProgram
+import ctypes
 
 class ShaderProgramSprite2D(ShaderProgram):
 
@@ -19,7 +20,6 @@ class ShaderProgramSprite2D(ShaderProgram):
         self.uniform_location_projection_matrix = self.get_uniform_location("ProjectionMatrix")
         self.uniform_location_model_view_matrix = self.get_uniform_location("ModelViewMatrix")
 
-
         print(f"===> {name} ... attribute_location_position = {self.attribute_location_position}")
         print(f"===> {name} ... attribute_location_texture_coordinates = {self.attribute_location_texture_coordinates}")
 
@@ -32,7 +32,7 @@ class ShaderProgramSprite2D(ShaderProgram):
 
         self.attribute_stride_position = float_size * 4
         self.attribute_size_position = 2
-        self.attribute_offset_position = 0
+        self.attribute_offset_position = ctypes.c_void_p(0)
 
         self.attribute_stride_texture_coordinates = float_size * 4
         self.attribute_size_texture_coordinates = 2

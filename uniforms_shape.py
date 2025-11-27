@@ -21,9 +21,7 @@ class UniformsShapeFragment(UniformsFragment):
         self._g = float(g)
         self._b = float(b)
         self._a = float(a)
-
-    # --- ColorConforming implementation ---
-
+    
     @property
     def r(self) -> float:
         return self._r

@@ -1,3 +1,4 @@
+# main.py
 import sys
 import ctypes
 from pathlib import Path
@@ -14,6 +15,7 @@ from matrix import Matrix
 from uniforms_shape import UniformsShapeVertex, UniformsShapeFragment
 from graphics_library import GraphicsLibrary
 from graphics_pipeline import GraphicsPipeline
+from color import Color
 
 # ----------------------------------------------------------------------
 # Main: Hello Triangle using your stack
@@ -82,7 +84,7 @@ def main():
     """
 
     vertices = [
-        Shape2DVertex(x=-0.5, y=-0.5),
+        Shape2DVertex(x=-0.75, y=-0.75),
         Shape2DVertex(x=0.5,  y=-0.5),
         Shape2DVertex(x=0.5,  y=0.5),
     ]
@@ -109,8 +111,7 @@ def main():
         b=0.2,
         a=1.0,
     )
-
-
+    
     print("GL VERSION:", gl.glGetString(gl.GL_VERSION))
     print("GLSL VERSION:", gl.glGetString(gl.GL_SHADING_LANGUAGE_VERSION))
     print("VENDOR:", gl.glGetString(gl.GL_VENDOR))
@@ -125,35 +126,25 @@ def main():
         gl.glClearColor(1.0, 0.0, 0.0, 1.0)
         gl.glClear(gl.GL_COLOR_BUFFER_BIT)
 
-        # Use the shape_2d program
-        program = pipeline.program_shape2d.program
-        gl.glUseProgram(program)
-
-        # Bind our VBO
-        gl.glBindBuffer(gl.GL_ARRAY_BUFFER, vbo)
-
-        # Position attribute (location printed as 0 in your logs)
-        loc_pos = pipeline.program_shape2d.attribute_location_position
-        gl.glEnableVertexAttribArray(loc_pos)
-        gl.glVertexAttribPointer(
-            loc_pos,
-            2,                  # vec2
-            gl.GL_FLOAT,
-            False,
-            0,
-            ctypes.c_void_p(0)  # offset into VBO
+        graphics.link_buffer_to_shader_program(
+            pipeline.program_shape2d,
+            vertex_buffer.buffer_index,
         )
+
+        # Solid color (reddish) using Color object
+        triangle_color = Color(1.0, 0.3, 0.2, 1.0)
 
         # Solid white color
         loc_color = pipeline.program_shape2d.uniform_location_modulate_color
         if loc_color != -1:
-            gl.glUniform4f(loc_color, 1.0, 1.0, 1.0, 1.0)
+            gl.glUniform4f(loc_color, 1.0, 0.0, 1.0, 1.0)
 
         # Draw 3 vertices from the VBO
         gl.glDrawArrays(gl.GL_TRIANGLES, 0, 3)
+        
 
-        gl.glDisableVertexAttribArray(loc_pos)
-
+        #gl.glDisableVertexAttribArray(loc_pos)
+        graphics.unlink_buffer_from_shader_program(pipeline.program_shape2d)
 
         """
         projection = Matrix()

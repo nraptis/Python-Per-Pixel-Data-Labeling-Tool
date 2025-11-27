@@ -309,7 +309,7 @@ class GraphicsLibrary:
                 program.attribute_stride_position,
                 program.attribute_offset_position,
             )
-
+            
         # Texture coordinates attribute
         if program.attribute_location_texture_coordinates != -1:
             gl.glEnableVertexAttribArray(program.attribute_location_texture_coordinates)
