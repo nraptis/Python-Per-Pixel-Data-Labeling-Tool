@@ -9,7 +9,29 @@
             "type": "debugpy",
             "request": "launch",
             "program": "main.py",
-            "console": "integratedTerminal"
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "suppressMultipleSessionWarning": true
+        }
+    ],
+    "tasks": [
+        {
+            "label": "kill-running",
+            "type": "shell",
+            "command": "echo Killing running tasks...",
+            "problemMatcher": [],
+            "options": {
+                "shell": {
+                    "executable": "/bin/bash",
+                    "args": ["-c"]
+                }
+            }
+        },
+        {
+            "label": "kill-old-opengl",
+            "type": "shell",
+            "command": "pkill -f 'python .*main_opengl.py' || true",
+            "problemMatcher": []
         }
     ]
 }

@@ -36,4 +36,4 @@ class ShaderProgramSprite2D(ShaderProgram):
 
         self.attribute_stride_texture_coordinates = float_size * 4
         self.attribute_size_texture_coordinates = 2
-        self.attribute_offset_texture_coordinates = float_size * 2
+        self.attribute_offset_texture_coordinates = ctypes.c_void_p(float_size * 2)

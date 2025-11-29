@@ -69,3 +69,8 @@ class GraphicsTexture:
         self.height = 0
         self.widthf = 0.0
         self.heightf = 0.0
+
+    def print(self) -> None:
+        print("GraphicsTexture -> [" + str(self.width) + ", " + str(self.height) + "]")
+        print("\tIndex = " + str(self.texture_index))
+        print("\tFile: " + str(self.file_name))

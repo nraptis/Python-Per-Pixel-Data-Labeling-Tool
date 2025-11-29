@@ -10,7 +10,7 @@ from OpenGL import GL as gl
 from float_bufferable import FloatBufferable
 from graphics_array_buffer import GraphicsArrayBuffer
 from graphics_texture import GraphicsTexture
-from sprite import Sprite
+from graphics_sprite import GraphicsSprite
 from color import Color
 from matrix import Matrix
 from shader_program import ShaderProgram
@@ -20,10 +20,6 @@ T = TypeVar("T", bound=FloatBufferable)
 class GraphicsLibrary:
     def __init__(
         self,
-        activity,        # kept for signature parity, but unused here
-        renderer,        # kept for parity; not used internally
-        pipeline,        # kept for parity; not used here
-        surface_view,    # kept for parity; not used here
         width: int,
         height: int,
     ) -> None:
@@ -31,55 +27,61 @@ class GraphicsLibrary:
         self.height: int = int(height)
         self.widthf: float = float(width)
         self.heightf: float = float(height)
-
-        # we don't hold weakrefs here; not needed for Python version
-
         self.texture_set_filter_linear()
         self.texture_set_clamp()
 
+
+    def clear(self) -> None:
+        gl.glClearColor(0.0, 0.0, 0.0, 1.0)
+        gl.glClear(gl.GL_COLOR_BUFFER_BIT)
+        
+    def clear_color(self, color: Optional[Color]) -> None:
+        if color:
+            gl.glClearColor(color.r, color.g, color.b, 1.0)
+        else:
+            gl.glClearColor(0.0, 0.0, 0.0, 1.0)
+        gl.glClear(gl.GL_COLOR_BUFFER_BIT)
+
+    def clear_rgb(self, r: float, g: float, b: float) -> None:
+        gl.glClearColor(r, g, b, 1.0)
+        gl.glClear(gl.GL_COLOR_BUFFER_BIT)  
+        
     # ----------------------------------------------------------------------
     # VBO helpers (ARRAY_BUFFER)
     # ----------------------------------------------------------------------
 
     def buffer_array_generate(self) -> int:
-        """Generate a GL_ARRAY_BUFFER VBO and return its id."""
         buf = gl.glGenBuffers(1)
         if isinstance(buf, (list, tuple)):
             return int(buf[0])
         return int(buf)
 
     def buffer_array_delete(self, index: int) -> None:
-        """Delete a GL_ARRAY_BUFFER VBO."""
         if index != -1:
             gl.glDeleteBuffers(1, [int(index)])
 
     def buffer_array_write(self, index: int, data: Sequence[float]) -> None:
         if index == -1:
             return
-
         arr = np.asarray(data, dtype=np.float32)
         gl.glBindBuffer(gl.GL_ARRAY_BUFFER, index)
-        # PyOpenGL can infer size from 'arr'
         gl.glBufferData(gl.GL_ARRAY_BUFFER, arr, gl.GL_STATIC_DRAW)
 
     def buffer_array_bind(self, index: int) -> None:
         if index != -1:
             gl.glBindBuffer(gl.GL_ARRAY_BUFFER, index)
 
-    def buffer_array_bind_from_wrapper(
+    def buffer_array_bind_array_buffer(
         self,
-        graphics_array_buffer: Optional[GraphicsArrayBuffer[T]],
+        array_buffer: Optional[GraphicsArrayBuffer[T]],
     ) -> None:
-        if graphics_array_buffer is None:
+        if array_buffer is None:
             return
-
-        if graphics_array_buffer.buffer_index != -1:
-            gl.glBindBuffer(gl.GL_ARRAY_BUFFER, graphics_array_buffer.buffer_index)
+        self.buffer_array_bind(index=array_buffer.buffer_index)
 
     # ----------------------------------------------------------------------
     # Index buffers (client-side numpy arrays for glDrawElements)
     # ----------------------------------------------------------------------
-
     def buffer_index_generate_from_list(self, values: Sequence[int]) -> np.ndarray:
         return np.asarray(values, dtype=np.uint32)
 
@@ -158,9 +160,8 @@ class GraphicsLibrary:
     def texture_bind(self, texture: Optional[GraphicsTexture]) -> None:
         if texture is not None and texture.texture_index != -1:
             gl.glBindTexture(gl.GL_TEXTURE_2D, int(texture.texture_index))
-
+            
     # --- variant that takes a "bitmap" (you decide what that is) ----------
-
     def texture_generate_from_bitmap(self, bitmap) -> int:
         if bitmap is None:
             return -1
@@ -273,8 +274,7 @@ class GraphicsLibrary:
     # ----------------------------------------------------------------------
     # Linking buffers to shader program (vertex attribs)
     # ----------------------------------------------------------------------
-
-    def link_buffer_to_shader_program_from_wrapper(
+    def link_buffer_to_shader_program_array_buffer(
         self,
         program: Optional[ShaderProgram],
         buffer: Optional[GraphicsArrayBuffer[T]],
@@ -343,7 +343,7 @@ class GraphicsLibrary:
             gl.glUniform2f(program.uniform_location_texture_size, float(width), float(height))
 
     # ModulateColor (from Color object)
-    def uniforms_modulate_color_set_from_color(
+    def uniforms_modulate_color_set_color(
         self,
         program: Optional[ShaderProgram],
         color: Color,
@@ -367,10 +367,10 @@ class GraphicsLibrary:
             return
         loc = program.uniform_location_modulate_color
         if loc != -1:
-            gl.glUniform4f(loc, float(r), float(g), float(b), float(a))
+            gl.glUniform4f(loc, r, g, b, a)
 
     # ProjectionMatrix from raw list/array
-    def uniforms_projection_matrix_set_from_buffer(
+    def uniforms_projection_matrix_set_buffer(
         self,
         program: Optional[ShaderProgram],
         buffer_16_floats,
@@ -398,7 +398,7 @@ class GraphicsLibrary:
         gl.glUniformMatrix4fv(loc, 1, False, arr)
 
     # ModelViewMatrix from raw buffer
-    def uniforms_model_view_matrix_set_from_buffer(
+    def uniforms_model_view_matrix_set_buffer(
         self,
         program: Optional[ShaderProgram],
         buffer_16_floats,
@@ -427,31 +427,25 @@ class GraphicsLibrary:
 
     # Texture uniforms (sampler2D on unit 0)
 
-    def uniforms_texture_set_from_texture(
+    def uniforms_texture_set_texture(
         self,
         program: Optional[ShaderProgram],
         texture: Optional[GraphicsTexture],
     ) -> None:
-        if program is None:
+        if texture is None:
             return
-        loc = program.uniform_location_texture
-        if loc == -1 or texture is None or texture.texture_index == -1:
-            return
+        self.uniforms_texture_set_index(program=program, texture_index=texture.texture_index)
 
-        gl.glActiveTexture(gl.GL_TEXTURE0)
-        gl.glBindTexture(gl.GL_TEXTURE_2D, int(texture.texture_index))
-        gl.glUniform1i(loc, 0)
-
-    def uniforms_texture_set_from_sprite(
+    def uniforms_texture_set_sprite(
         self,
         program: Optional[ShaderProgram],
-        sprite: Optional[Sprite],
+        sprite: Optional[GraphicsSprite],
     ) -> None:
         if sprite is None:
             return
-        self.uniforms_texture_set_from_texture(program, sprite.texture)
+        self.uniforms_texture_set_texture(program, sprite.texture)
 
-    def uniforms_texture_set_from_index(
+    def uniforms_texture_set_index(
         self,
         program: Optional[ShaderProgram],
         texture_index: int,
@@ -461,7 +455,7 @@ class GraphicsLibrary:
         loc = program.uniform_location_texture
         if loc == -1 or texture_index == -1:
             return
-
+        
         gl.glActiveTexture(gl.GL_TEXTURE0)
-        gl.glBindTexture(gl.GL_TEXTURE_2D, int(texture_index))
+        gl.glBindTexture(gl.GL_TEXTURE_2D, texture_index)
         gl.glUniform1i(loc, 0)

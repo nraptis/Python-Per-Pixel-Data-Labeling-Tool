@@ -4,7 +4,7 @@ from __future__ import annotations
 from typing import Optional
 from graphics_texture import GraphicsTexture
 
-class Sprite:
+class GraphicsSprite:
     def __init__(self) -> None:
         self.texture: Optional[GraphicsTexture] = None
 
@@ -72,3 +72,15 @@ class Sprite:
         self.start_y = float(y)
         self.end_x = float(x + width)
         self.end_y = float(y + height)
+
+    def print(self) -> None:
+        print("GraphicsSprite -> [" + str(self.width) + ", " + str(self.height) + "]")
+        if self.texture:
+            print("\tTexture Index: " + str(self.texture.texture_index))
+            print("\tTexture File: " + str(self.texture.file_name))
+        print("\tX: [" + str(self.start_x) + ", " + str(self.end_x) + str("]"))
+        print("\tY: [" + str(self.start_y) + ", " + str(self.end_y) + str("]"))
+        print("\tU: [" + str(self.start_u) + ", " + str(self.end_u) + str("]"))
+        print("\tV: [" + str(self.start_v) + ", " + str(self.end_v) + str("]"))
+        print("\tScale: " + str(self.scale_factor))
+        

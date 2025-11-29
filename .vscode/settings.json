@@ -1,0 +1,10 @@
+{
+  // Automatically restart debug session when you click Play again
+  "debug.restartOnStart": true,
+
+  // Clear debug terminal when reusing it
+  "debug.terminal.clearBeforeReusing": true,
+
+  // Don't pop up the Debug Console unless there's a breakpoint / output
+  "debug.internalConsoleOptions": "neverOpen"
+}
