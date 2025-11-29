@@ -19,10 +19,9 @@ class ShaderProgramSprite2D(ShaderProgram):
         self.uniform_location_modulate_color = self.get_uniform_location("ModulateColor")
         self.uniform_location_projection_matrix = self.get_uniform_location("ProjectionMatrix")
         self.uniform_location_model_view_matrix = self.get_uniform_location("ModelViewMatrix")
-
+        
         print(f"===> {name} ... attribute_location_position = {self.attribute_location_position}")
         print(f"===> {name} ... attribute_location_texture_coordinates = {self.attribute_location_texture_coordinates}")
-
         print(f"===> {name} ... uniform_location_texture = {self.uniform_location_texture}")
         print(f"===> {name} ... uniform_location_modulate_color = {self.uniform_location_modulate_color}")
         print(f"===> {name} ... uniform_location_projection_matrix = {self.uniform_location_projection_matrix}")

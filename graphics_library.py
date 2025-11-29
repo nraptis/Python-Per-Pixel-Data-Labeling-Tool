@@ -369,64 +369,55 @@ class GraphicsLibrary:
         if loc != -1:
             gl.glUniform4f(loc, r, g, b, a)
 
-    # ProjectionMatrix from raw list/array
-    def uniforms_projection_matrix_set_buffer(
+    
+    def uniforms_matrices_set_buffer(
         self,
         program: Optional[ShaderProgram],
-        buffer_16_floats,
+        projection_buffer,
+        model_view_buffer,
     ) -> None:
         if program is None:
             return
-        loc = program.uniform_location_projection_matrix
-        if loc == -1:
-            return
 
-        arr = np.asarray(buffer_16_floats, dtype=np.float32)
-        if arr.size != 16:
-            raise ValueError("Projection matrix buffer must contain 16 floats")
-        gl.glUniformMatrix4fv(loc, 1, False, arr)
+        projection_location = program.uniform_location_projection_matrix
+        model_view_location = program.uniform_location_model_view_matrix
 
-    # ProjectionMatrix from Matrix object
-    def uniforms_projection_matrix_set(self, program: Optional[ShaderProgram], matrix: Optional[Matrix]) -> None:
-        if program is None or matrix is None:
-            return
-        loc = program.uniform_location_projection_matrix
-        if loc == -1:
-            return
+        # Projection
+        if projection_location != -1:
+            arr_p = np.asarray(projection_buffer, dtype=np.float32)
+            if arr_p.size != 16:
+                raise ValueError("Projection buffer must contain 16 floats")
+            gl.glUniformMatrix4fv(projection_location, 1, False, arr_p)
 
-        arr = np.asarray(matrix.array(), dtype=np.float32)
-        gl.glUniformMatrix4fv(loc, 1, False, arr)
-
-    # ModelViewMatrix from raw buffer
-    def uniforms_model_view_matrix_set_buffer(
+        # ModelView
+        if model_view_location != -1:
+            arr_mv = np.asarray(model_view_buffer, dtype=np.float32)
+            if arr_mv.size != 16:
+                raise ValueError("Model-view buffer must contain 16 floats")
+            gl.glUniformMatrix4fv(model_view_location, 1, False, arr_mv)
+    
+    def uniforms_matrices_set(
         self,
         program: Optional[ShaderProgram],
-        buffer_16_floats,
+        projection_matrix: Optional[Matrix],
+        model_view_matrix: Optional[Matrix],
     ) -> None:
         if program is None:
             return
-        loc = program.uniform_location_model_view_matrix
-        if loc == -1:
-            return
 
-        arr = np.asarray(buffer_16_floats, dtype=np.float32)
-        if arr.size != 16:
-            raise ValueError("Model-view matrix buffer must contain 16 floats")
-        gl.glUniformMatrix4fv(loc, 1, False, arr)
+        projection_location = program.uniform_location_projection_matrix
+        model_view_location = program.uniform_location_model_view_matrix
 
-    # ModelViewMatrix from Matrix object
-    def uniforms_model_view_matrix_set(self, program: Optional[ShaderProgram], matrix: Optional[Matrix]) -> None:
-        if program is None or matrix is None:
-            return
-        loc = program.uniform_location_model_view_matrix
-        if loc == -1:
-            return
+        # Projection
+        if projection_location != -1 and projection_matrix is not None:
+            arr_p = np.asarray(projection_matrix.array(), dtype=np.float32)
+            gl.glUniformMatrix4fv(projection_location, 1, False, arr_p)
 
-        arr = np.asarray(matrix.array(), dtype=np.float32)
-        gl.glUniformMatrix4fv(loc, 1, False, arr)
-
-    # Texture uniforms (sampler2D on unit 0)
-
+        # ModelView
+        if model_view_location != -1 and model_view_matrix is not None:
+            arr_mv = np.asarray(model_view_matrix.array(), dtype=np.float32)
+            gl.glUniformMatrix4fv(model_view_location, 1, False, arr_mv)
+            
     def uniforms_texture_set_texture(
         self,
         program: Optional[ShaderProgram],
